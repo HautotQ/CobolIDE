@@ -12,7 +12,8 @@ header { display:flex; align-items:center; background:#1e1e1e; color:white; padd
 header h1 { flex:1; margin:0; font-size:18px; }
 #main { display:flex; flex:1; }
 #fileList { width:200px; background:#2e2e2e; color:white; padding:10px; box-sizing:border-box; overflow-y:auto; }
-#fileList button { display:block; width:100%; margin-bottom:5px; }
+#fileList button { display:block; width:100%; margin-bottom:5px; background:#3e3e3e; color:white; border:none; padding:5px; text-align:left; cursor:pointer; }
+#fileList button.active { background:#007acc; }
 #editorContainer { flex:1; display:flex; flex-direction:column; }
 #editor { flex:1; }
 #output { height:120px; background:#1e1e1e; color:white; margin:0; padding:10px; overflow-y:auto; }
@@ -52,23 +53,29 @@ require(["vs/editor/editor.main"], function() {
     const fileListContainer = document.getElementById("fileList");
     const output = document.getElementById("output");
 
+    function setActiveButton(name) {
+        Array.from(fileListContainer.children).forEach(btn => {
+            btn.classList.toggle("active", btn.textContent === name);
+        });
+    }
+
     function addFile(name, content) {
         if (files[name]) { alert("Le fichier existe déjà !"); return; }
         files[name] = content;
 
         const btn = document.createElement("button");
         btn.textContent = name;
-        btn.onclick = () => {
-            if (currentFile) files[currentFile] = editor.getValue();
-            currentFile = name;
-            editor.setValue(files[name]);
-        };
+        btn.onclick = () => openFile(name);
         fileListContainer.appendChild(btn);
 
-        if (!currentFile) {
-            currentFile = name;
-            editor.setValue(files[name]);
-        }
+        if (!currentFile) openFile(name);
+    }
+
+    function openFile(name) {
+        if (currentFile) files[currentFile] = editor.getValue();
+        currentFile = name;
+        editor.setValue(files[name]);
+        setActiveButton(name);
     }
 
     // Ajouter fichier
@@ -91,27 +98,22 @@ require(["vs/editor/editor.main"], function() {
 
     // Export ZIP
     document.getElementById("exportProject").addEventListener("click", async () => {
-    if (currentFile) files[currentFile] = editor.getValue();
-
-    const zip = new JSZip();
-    for (const name in files) zip.file(name, files[name]);
-    const content = await zip.generateAsync({ type: "blob" });
-
-    const a = document.createElement("a");
-    a.style.display = "none";
-    a.href = URL.createObjectURL(content);
-    a.download = "COBOL_Project.zip";
-    document.body.appendChild(a);
-
-    // Déclenchement du téléchargement
-    a.click();
-
-    // Retirer l'élément après un court délai pour laisser le temps au téléchargement
-    setTimeout(() => {
-        URL.revokeObjectURL(a.href);
-        document.body.removeChild(a);
-    }, 100);
-});
+        if (currentFile) files[currentFile] = editor.getValue();
+        const zip = new JSZip();
+        for (const name in files) zip.file(name, files[name]);
+        const content = await zip.generateAsync({ type: "blob" });
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = URL.createObjectURL(content);
+        a.download = "COBOL_Project.zip";
+        document.body.appendChild(a);
+        a.click();
+        // Laisse le temps au téléchargement avant suppression
+        setTimeout(() => {
+            URL.revokeObjectURL(a.href);
+            document.body.removeChild(a);
+        }, 500);
+    });
 
     // Fichier par défaut
     addFile("HELLO.cob", `IDENTIFICATION DIVISION.
