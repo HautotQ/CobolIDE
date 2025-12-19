@@ -102,16 +102,19 @@ require(["vs/editor/editor.main"], function() {
 
     const zip = new JSZip();
     for (const name in files) zip.file(name, files[name]);
-    const content = await zip.generateAsync({ type: "blob" });
+    const content = await zip.generateAsync({ type: "uint8array" }); // ou "blob"
+
+    const blob = new Blob([content], { type: "application/zip" });
+    const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(content);
+    a.href = url;
     a.download = "COBOL_Project.zip";
-    a.style.display = "none";
     document.body.appendChild(a);
     a.click();
-    // Ne supprime pas immédiatement le lien : certains navigateurs bloquent sinon
-    // URL.revokeObjectURL(a.href); // optionnel si nécessaire plus tard
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
 });
 
     // Fichier par défaut
