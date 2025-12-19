@@ -21,10 +21,11 @@
     </head>
     <body>
         <header>
-            <h1>COBOL Web IDE</h1>
-            <input type="text" id="newFileName" placeholder="Nom fichier.cob" style="width:150px"/>
-            <button id="newFileBtn">＋ Fichier</button>
-            <button id="run">▶ Run</button>
+          <h1>COBOL Web IDE</h1>
+          <input type="text" id="newFileName" placeholder="Nom fichier.cob" style="width:150px"/>
+          <button id="newFileBtn">＋ Fichier</button>
+          <button id="run">▶ Run</button>
+          <button id="exportProject">💾 Exporter Projet</button>
         </header>
         
         <div id="main">
@@ -55,12 +56,13 @@ require(["vs/editor/editor.main"], function () {
     const output = document.getElementById("output");
 
     function addFile(name, content) {
+        if (files[name]) return alert("Le fichier existe déjà !");
         files[name] = content;
         const btn = document.createElement("button");
         btn.textContent = name;
         btn.onclick = () => openFile(name);
         fileListContainer.appendChild(btn);
-        openFile(name);
+        if (!currentFile) openFile(name); // ouvre seulement si aucun fichier ouvert
     }
 
     function openFile(name) {
@@ -73,7 +75,6 @@ require(["vs/editor/editor.main"], function () {
         const nameInput = document.getElementById("newFileName");
         const name = nameInput.value.trim();
         if (!name) return alert("Entrez un nom de fichier !");
-        if (files[name]) return alert("Le fichier existe déjà !");
         addFile(name, `IDENTIFICATION DIVISION.\nPROGRAM-ID. ${name.replace(/\..+$/, "").toUpperCase()}.\n\nPROCEDURE DIVISION.\n    DISPLAY "Hello from ${name}".\n    STOP RUN.`);
         nameInput.value = "";
     };
@@ -93,7 +94,7 @@ require(["vs/editor/editor.main"], function () {
         output.textContent = matches.length ? matches.map(m => m[1]).join("\n") : "(Aucune sortie)";
     }
 
-    // Crée un fichier par défaut
+    // --- Crée un fichier par défaut ---
     addFile("HELLO.cob", `IDENTIFICATION DIVISION.
 PROGRAM-ID. HELLO.
 
@@ -101,18 +102,11 @@ PROCEDURE DIVISION.
 DISPLAY "Hello from COBOL".
 STOP RUN.`);
 
-    // --- EXPORT ZIP ---
-    const exportBtn = document.createElement("button");
-    exportBtn.textContent = "💾 Exporter Projet";
-    exportBtn.style.marginLeft = "5px";
-    document.querySelector("header").appendChild(exportBtn);
-
-    exportBtn.onclick = async () => {
+    // --- Export ZIP ---
+    document.getElementById("exportProject").onclick = async () => {
         if (currentFile) files[currentFile] = editor.getValue();
         const zip = new JSZip();
-        for (let name in files) {
-            zip.file(name, files[name]);
-        }
+        for (let name in files) zip.file(name, files[name]);
         const content = await zip.generateAsync({ type: "blob" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(content);
