@@ -98,22 +98,21 @@ require(["vs/editor/editor.main"], function() {
 
     // Export ZIP
     document.getElementById("exportProject").addEventListener("click", async () => {
-        if (currentFile) files[currentFile] = editor.getValue();
-        const zip = new JSZip();
-        for (const name in files) zip.file(name, files[name]);
-        const content = await zip.generateAsync({ type: "blob" });
-        const a = document.createElement("a");
-        a.style.display = "none";
-        a.href = URL.createObjectURL(content);
-        a.download = "COBOL_Project.zip";
-        document.body.appendChild(a);
-        a.click();
-        // Laisse le temps au téléchargement avant suppression
-        setTimeout(() => {
-            URL.revokeObjectURL(a.href);
-            document.body.removeChild(a);
-        }, 500);
-    });
+    if (currentFile) files[currentFile] = editor.getValue();
+
+    const zip = new JSZip();
+    for (const name in files) zip.file(name, files[name]);
+    const content = await zip.generateAsync({ type: "blob" });
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(content);
+    a.download = "COBOL_Project.zip";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    // Ne supprime pas immédiatement le lien : certains navigateurs bloquent sinon
+    // URL.revokeObjectURL(a.href); // optionnel si nécessaire plus tard
+});
 
     // Fichier par défaut
     addFile("HELLO.cob", `IDENTIFICATION DIVISION.
