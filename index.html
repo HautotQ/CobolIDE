@@ -102,11 +102,11 @@ require(["vs/editor/editor.main"], function() {
 
     const zip = new JSZip();
     for (const name in files) zip.file(name, files[name]);
-    const content = await zip.generateAsync({ type: "uint8array" }); // ou "blob"
 
-    const blob = new Blob([content], { type: "application/zip" });
+    // Générer un blob directement
+    const blob = await zip.generateAsync({ type: "blob" });
+
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = "COBOL_Project.zip";
