@@ -1,48 +1,45 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>COBOL Web IDE Multi-fichiers</title>
-        <link rel="stylesheet" href="style.css" />
-        <link rel="apple-touch-icon" href="apple-touch-icon.png">
-        <link rel="favicon" href="favicon.png">
-        <style>
-            body { display: flex; flex-direction: column; height: 100vh; margin: 0; font-family: sans-serif; overflow: hidden; }
-            header { display: flex; align-items: center; background: #1e1e1e; color: white; padding: 5px 10px; }
-            header h1 { flex: 1; margin: 0; font-size: 18px; }
-            #main { display: flex; flex: 1; }
-            #fileList { width: 200px; background: #2e2e2e; color: white; padding: 10px; box-sizing: border-box; overflow-y: auto; }
-            #fileList button { display: block; width: 100%; margin-bottom: 5px; }
-            #editorContainer { flex: 1; display: flex; flex-direction: column; }
-            #editor { flex: 1; }
-            #output { height: 120px; background: #1e1e1e; color: white; margin: 0; padding: 10px; overflow-y: auto; }
-        </style>
-    </head>
-    <body>
-        <header>
-          <h1>COBOL Web IDE</h1>
-          <input type="text" id="newFileName" placeholder="Nom fichier.cob" style="width:150px"/>
-          <button id="newFileBtn">＋ Fichier</button>
-          <button id="run">▶ Run</button>
-          <button id="exportProject">💾 Exporter Projet</button>
-        </header>
-        
-        <div id="main">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>COBOL Web IDE Multi-fichiers</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.11.0/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<style>
+body { display:flex; flex-direction:column; height:100vh; margin:0; font-family:sans-serif; }
+header { display:flex; align-items:center; background:#1e1e1e; color:white; padding:5px 10px; }
+header h1 { flex:1; margin:0; font-size:18px; }
+#main { display:flex; flex:1; }
+#fileList { width:200px; background:#2e2e2e; color:white; padding:10px; box-sizing:border-box; overflow-y:auto; }
+#fileList button { display:block; width:100%; margin-bottom:5px; }
+#editorContainer { flex:1; display:flex; flex-direction:column; }
+#editor { flex:1; }
+#output { height:120px; background:#1e1e1e; color:white; margin:0; padding:10px; overflow-y:auto; }
+</style>
+</head>
+<body>
+<header>
+<h1>COBOL Web IDE</h1>
+<input type="text" id="newFileName" placeholder="Nom fichier.cob" style="width:150px"/>
+<button id="newFileBtn">＋ Fichier</button>
+<button id="run">▶ Run</button>
+<button id="exportProject">💾 Exporter Projet</button>
+</header>
+
+<div id="main">
 <div id="fileList"></div>
 <div id="editorContainer">
 <div id="editor"></div>
 <pre id="output">Sortie du programme…</pre>
 </div>
 </div>
-        
-<!-- Monaco Editor -->
-<!-- Ajouter juste avant la fermeture de </body> -->
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.11.0/dist/jszip.min.js"></script>
 
 <script>
-require(["vs/editor/editor.main"], function () {
-    let files = {};
+require.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs" } });
+
+require(["vs/editor/editor.main"], function() {
+    const files = {};
     let currentFile = null;
 
     const editor = monaco.editor.create(document.getElementById("editor"), {
@@ -56,64 +53,62 @@ require(["vs/editor/editor.main"], function () {
     const output = document.getElementById("output");
 
     function addFile(name, content) {
-        if (files[name]) return alert("Le fichier existe déjà !");
+        if (files[name]) { alert("Le fichier existe déjà !"); return; }
         files[name] = content;
+
         const btn = document.createElement("button");
         btn.textContent = name;
-        btn.onclick = () => openFile(name);
+        btn.onclick = () => {
+            if (currentFile) files[currentFile] = editor.getValue();
+            currentFile = name;
+            editor.setValue(files[name]);
+        };
         fileListContainer.appendChild(btn);
-        if (!currentFile) openFile(name); // ouvre seulement si aucun fichier ouvert
+
+        if (!currentFile) {
+            currentFile = name;
+            editor.setValue(files[name]);
+        }
     }
 
-    function openFile(name) {
-        if (currentFile) files[currentFile] = editor.getValue();
-        currentFile = name;
-        editor.setValue(files[name]);
-    }
-
+    // Ajouter fichier
     document.getElementById("newFileBtn").onclick = () => {
-        const nameInput = document.getElementById("newFileName");
-        const name = nameInput.value.trim();
+        const name = document.getElementById("newFileName").value.trim();
         if (!name) return alert("Entrez un nom de fichier !");
         addFile(name, `IDENTIFICATION DIVISION.\nPROGRAM-ID. ${name.replace(/\..+$/, "").toUpperCase()}.\n\nPROCEDURE DIVISION.\n    DISPLAY "Hello from ${name}".\n    STOP RUN.`);
-        nameInput.value = "";
+        document.getElementById("newFileName").value = "";
     };
 
+    // Run
     document.getElementById("run").onclick = () => {
         if (!currentFile) return alert("Aucun fichier ouvert !");
         files[currentFile] = editor.getValue();
-        runCobol(files[currentFile]);
+        const code = files[currentFile];
+        if (!code.includes("IDENTIFICATION DIVISION")) { output.textContent = "❌ Erreur : IDENTIFICATION DIVISION manquante"; return; }
+        const matches = [...code.matchAll(/DISPLAY\s+"([^"]+)"/g)];
+        output.textContent = matches.length ? matches.map(m=>m[1]).join("\n") : "(Aucune sortie)";
     };
 
-    function runCobol(code) {
-        if (!code.includes("IDENTIFICATION DIVISION")) {
-            output.textContent = "❌ Erreur : IDENTIFICATION DIVISION manquante";
-            return;
-        }
-        const matches = [...code.matchAll(/DISPLAY\s+"([^"]+)"/g)];
-        output.textContent = matches.length ? matches.map(m => m[1]).join("\n") : "(Aucune sortie)";
-    }
-
-    // --- Crée un fichier par défaut ---
-    addFile("HELLO.cob", `IDENTIFICATION DIVISION.
-PROGRAM-ID. HELLO.
-
-PROCEDURE DIVISION.
-DISPLAY "Hello from COBOL".
-STOP RUN.`);
-
-    // --- Export ZIP ---
+    // Export ZIP
     document.getElementById("exportProject").onclick = async () => {
         if (currentFile) files[currentFile] = editor.getValue();
         const zip = new JSZip();
-        for (let name in files) zip.file(name, files[name]);
-        const content = await zip.generateAsync({ type: "blob" });
+        for (const name in files) zip.file(name, files[name]);
+        const content = await zip.generateAsync({type:"blob"});
         const a = document.createElement("a");
         a.href = URL.createObjectURL(content);
         a.download = "COBOL_Project.zip";
         a.click();
         URL.revokeObjectURL(a.href);
     };
+
+    // Fichier par défaut
+    addFile("HELLO.cob", `IDENTIFICATION DIVISION.
+PROGRAM-ID. HELLO.
+
+PROCEDURE DIVISION.
+DISPLAY "Hello from COBOL".
+STOP RUN.`);
 });
 </script>
 </body>
