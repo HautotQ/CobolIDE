@@ -91,30 +91,26 @@ require(["vs/editor/editor.main"], function() {
 
     // Export ZIP
     document.getElementById("exportProject").addEventListener("click", async () => {
-    // Sauvegarde le fichier courant
     if (currentFile) files[currentFile] = editor.getValue();
 
     const zip = new JSZip();
-    for (const name in files) {
-        zip.file(name, files[name]);
-    }
-
+    for (const name in files) zip.file(name, files[name]);
     const content = await zip.generateAsync({ type: "blob" });
 
-    // Création d'un lien temporaire
     const a = document.createElement("a");
-    a.style.display = "none"; // pas visible
-    document.body.appendChild(a);
-
+    a.style.display = "none";
     a.href = URL.createObjectURL(content);
     a.download = "COBOL_Project.zip";
+    document.body.appendChild(a);
 
     // Déclenchement du téléchargement
     a.click();
 
-    // Nettoyage
-    URL.revokeObjectURL(a.href);
-    document.body.removeChild(a);
+    // Retirer l'élément après un court délai pour laisser le temps au téléchargement
+    setTimeout(() => {
+        URL.revokeObjectURL(a.href);
+        document.body.removeChild(a);
+    }, 100);
 });
 
     // Fichier par défaut
